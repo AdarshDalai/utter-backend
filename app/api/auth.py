@@ -1,6 +1,8 @@
-from fastapi import APIRouter, HTTPException, Body
+from fastapi import APIRouter, HTTPException, Body, Depends
 from pydantic import BaseModel
-from app.services.supabase import create_user, login_user, logout_user, reset_password, get_user_by_email
+from app.services.supabase import create_user, login_user, logout_user, reset_password, get_user_by_email, get_current_user
+from app.models.user import User
+
 
 router = APIRouter()
 
@@ -52,3 +54,11 @@ async def reset_password(email: str, redirect_to: str):
         return {"message": "Password reset email sent"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+    
+@router.get("/current_user", tags=["auth"])
+def get_current_user_details(current_user: dict = Depends(get_current_user)):
+    """
+    Endpoint to retrieve the currently authenticated user.
+    """
+
+    return {"user": current_user}

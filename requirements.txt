@@ -3,3 +3,5 @@ uvicorn
 pydantic
 supabase
 python-dotenv
+boto3
+dataplane

@@ -3,5 +3,5 @@ from typing import Optional
 
 class Post(BaseModel):
     content: str
-    media_url: Optional[str] = None
+    media_url: str = None
     user_id: str
