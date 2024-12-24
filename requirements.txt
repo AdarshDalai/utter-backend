@@ -1,6 +1,6 @@
-fastapi
+fastapi[all]
 fastapi-sqlalchemy
-pydantic
+pydantic[all]
 alembic
 psycopg2-binary
 uvicorn
