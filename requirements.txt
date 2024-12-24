@@ -11,3 +11,4 @@ botocore
 dataplane
 sqlmodel
 fuzzywuzzy
+asyncpg
