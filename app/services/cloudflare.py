@@ -3,32 +3,21 @@ import os
 import boto3
 from botocore.client import Config
 from dotenv import load_dotenv
-import json
-
 from fastapi import HTTPException, UploadFile
 
-
+# Load environment variables
 load_dotenv()
 
+# Configuration variables
+AccountID = os.getenv("CLOUDFLARE_R2_ID")
+Bucket = os.getenv("CLOUDFLARE_R2_BUCKET")
+ClientAccessKey = os.getenv("CLOUDFLARE_R2_ACCESS_KEY")
+ClientSecret = os.getenv("CLOUDFLARE_R2_SECRET_KEY")
+region = os.getenv("CLOUDFLARE_R2_REGION")
 
-# 1. Account ID
-AccountID = os.environ["CLOUDFLARE_R2_ID"]
-
-# 2. Bucket name
-Bucket = os.environ["CLOUDFLARE_R2_BUCKET"]
-
-# 3. Client access key
-ClientAccessKey = os.environ["CLOUDFLARE_R2_ACCESS_KEY"]
-
-# 4. Client secret
-ClientSecret = os.environ["CLOUDFLARE_R2_SECRET_KEY"]
-
-# 5. Connection url
 ConnectionUrl = f"https://{AccountID}.r2.cloudflarestorage.com"
 
-region = os.environ["CLOUDFLARE_R2_REGION"]
-
-# Create a client to connect to Cloudflare's R2 Storage
+# Create S3 client for Cloudflare R2
 S3Connect = boto3.client(
     's3',
     endpoint_url=ConnectionUrl,
@@ -38,34 +27,55 @@ S3Connect = boto3.client(
     region_name=region
 )
 
-async def upload_posts_to_r2(file: UploadFile, file_name):
 
-    file_content = await file.read()  # Read the file's content
+async def upload_to_r2(file: UploadFile, folder: str, file_name: str):
+    """
+    Upload a file to a specific folder in Cloudflare R2.
+    
+    :param file: The uploaded file object.
+    :param folder: The target folder in the bucket (e.g., "posts", "profile pictures").
+    :param file_name: The name to save the file as.
+    :return: The public URL of the uploaded file.
+    """
+    file_content = await file.read()  # Read file content
 
     try:
-        s3_upload(
-            S3Client=S3Connect,
+        # Check if the file already exists
+        file_key = f"{folder}/{file_name}"
+        try:
+            S3Connect.head_object(Bucket=Bucket, Key=file_key)
+            # If exists, delete the old file
+            S3Connect.delete_object(Bucket=Bucket, Key=file_key)
+        except S3Connect.exceptions.ClientError as e:
+            # If the error is a 404 Not Found, ignore it
+            if e.response['Error']['Code'] == '404':
+                pass
+            else:
+                raise
+
+        # Upload the file
+        S3Connect.put_object(
             Bucket=Bucket,
-            TargetFilePath=f"posts/{file_name}",
-            UploadObject=file_content,
-            UploadMethod="Object"
+            Key=file_key,
+            Body=file_content,
+            ACL="public-read"  # Make the file publicly accessible
         )
-        return f"https://{Bucket}.{ConnectionUrl}/posts/{file_name}"
+
+        # Return the public URL
+        return f"https://{Bucket}.{ConnectionUrl}/{file_key}"
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}")
     
-async def upload_profile_picture_to_r2(file: UploadFile, file_name):
-    
-    file_content = await file.read()  # Read the file's content
+async def upload_posts_to_r2(file: UploadFile, file_name: str):
+    """
+    Upload a post media file to R2.
+    """
+    return await upload_to_r2(file, "posts", file_name)
 
-    try:
-        s3_upload(
-            S3Client=S3Connect,
-            Bucket=Bucket,
-            TargetFilePath=f"profile pictures/{file_name}",
-            UploadObject=file_content,
-            UploadMethod="Object"  # Set file to be publicly accessible
-        )
-        return f"https://{Bucket}.{ConnectionUrl}/profile pictures/{file_name}"
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}")
+
+async def upload_profile_picture_to_r2(file: UploadFile, file_name: str):
+    """
+    Upload a profile picture to R2.
+    """
+    return await upload_to_r2(file, "profile pictures", file_name)

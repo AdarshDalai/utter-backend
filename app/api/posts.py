@@ -1,10 +1,10 @@
+import time
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from app.services.supabase import supabase
 from app.models.post import Post
 from app.models.user import User
 from app.services.cloudflare import upload_posts_to_r2
 from app.services.supabase import get_current_user
-from app.utils.db import get_db
 
 router = APIRouter()
 
@@ -20,22 +20,32 @@ async def create_post(
     - Retrieves `user_id` from the token.
     """
     try:
-        # Step 1: Upload media to Cloudflare (or another media storage)
-        media_url = await upload_posts_to_r2(media, media.filename)  # Assuming this function uploads the file and returns the URL
+        # Step 1: Validate input
+        if not media:
+            raise HTTPException(status_code=400, detail="Media file is required.")
         
-        # Step 2: Insert post data into Supabase database
+        # Step 2: Upload media to Cloudflare R2
+        file_extension = media.filename.split('.')[-1]  # Get file extension
+        if file_extension.lower() not in ["jpg", "jpeg", "png", "mp4", "mov"]:
+            raise HTTPException(status_code=400, detail="Unsupported file format.")
+        
+        # Generate a unique file name using user ID and timestamp
+        unique_file_name = f"{current_user.user.id}_{int(time.time())}.{file_extension}"
+        media_url = await upload_posts_to_r2(media, unique_file_name)
+        
+        # Step 3: Insert post data into Supabase
         post_data = {
             "content": content,
             "media_url": media_url,
-            "user_id": current_user.user.id  # Get the authenticated user ID
+            "user_id": current_user.user.id  # Use authenticated user ID
         }
         response = supabase.table("posts").insert(post_data).execute()
 
-        # Check if insertion was successful
         if not response.data:
-            raise HTTPException(status_code=400, detail="Failed to create post")
+            raise HTTPException(status_code=400, detail="Failed to create post.")
 
-        # Step 3: Return the created post data
-        return response.data[0]  # Return the first post record
+        # Step 4: Return the created post
+        return response.data[0]
+    
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")

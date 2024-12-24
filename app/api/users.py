@@ -74,7 +74,7 @@ async def update_username(username: str):
 async def update_profile_picture(profile_picture: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
     try:
         current_user_response = supabase.table("profiles").select("username").eq("id", current_user.user.id).execute()
-        current_username = current_user_response.data.username
+        current_username = current_user_response.data[0]['username']
         profile_picture_url = await upload_profile_picture_to_r2(profile_picture, current_username)
         response = update_user_profile_picture(profile_picture_url)
         if not response.user:
