@@ -26,14 +26,14 @@ async def get_feed(current_user: dict = Depends(get_current_user)):
         
         # If the user is not following anyone, return an empty feed
         if not followers_query.data:
-            return {"posts": []}
+            return []
 
         following_ids = [follower["following_id"] for follower in followers_query.data]
 
         # Step 2: Fetch posts from followed users
         posts_query = (
             supabase.table("posts")
-            .select("id, content, media_url, user_id, created_at")
+            .select("*")
             .in_("user_id", following_ids)  # Get posts from users in the following list
             .order("created_at", desc=True)  # Sort by creation date, descending (most recent first)
             .execute()
@@ -41,10 +41,10 @@ async def get_feed(current_user: dict = Depends(get_current_user)):
         
         # If no posts found, return an empty list
         if not posts_query.data:
-            return {"posts": []}
+            return []
 
         # Step 3: Return the posts in the feed
-        return {"posts": posts_query.data}
+        return posts_query.data
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
