@@ -8,3 +8,9 @@ python-dotenv
 supabase
 boto3
 dataplane
+os
+botocore
+sqlmodel
+typing
+fuzzywuzzy
+time

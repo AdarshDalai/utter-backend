@@ -1,7 +1,5 @@
 import os
-from fastapi import HTTPException
 from supabase import create_client, Client
-from passlib.context import CryptContext
 from app.models.user import User
 
 
