@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException
-from app.services.supabase import supabase
+from fastapi import APIRouter, Depends, HTTPException
+from app.services.supabase import get_current_user, supabase
 from app.models.notification import Notification
+from app.utils.db import get_db
 
 router = APIRouter()
 

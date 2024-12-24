@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from app.services.supabase import supabase
 from app.services.supabase import get_current_user
+from app.utils.db import get_db
 
 router = APIRouter()
 
@@ -35,7 +36,7 @@ async def send_follow_request(
         }
         response = supabase.table("followers").insert(follow_data).execute()
 
-        if not response.get("data"):
+        if not response.data:
             raise HTTPException(status_code=400, detail="Failed to send follow request")
 
         return {"message": "Follow request sent successfully", "status": status}
@@ -60,7 +61,7 @@ async def manage_follow_request(
 
         # Fetch the follow request
         follow_query = supabase.table("followers").select("*").eq("id", follow_request_id).single().execute()
-        follow_request = follow_query.get("data")
+        follow_request = follow_query.data
         if not follow_request:
             raise HTTPException(status_code=404, detail="Follow request not found")
 
@@ -72,7 +73,7 @@ async def manage_follow_request(
         updated_status = "accepted" if action == "accept" else "rejected"
         response = supabase.table("followers").update({"status": updated_status}).eq("id", follow_request_id).execute()
 
-        if not response.get("data"):
+        if not response.data:
             raise HTTPException(status_code=400, detail="Failed to update follow request status")
 
         return {"message": f"Follow request {action}ed successfully", "status": updated_status}
@@ -87,15 +88,12 @@ async def get_followers(current_user: dict = Depends(get_current_user)):
     """
     try:
         user_id = current_user.user.id
-        query = (
-            supabase.table("followers")
-            .select("follower_id, profiles(username, profile_picture_url)")
-            .eq("following_id", user_id)
-            .eq("status", "accepted")
-            .execute()
-        )
+        query = supabase.table("followers").select("follower_id, profiles!followers_follower_id_fkey(username, profile_picture_url)").eq("following_id", user_id).eq("status", "accepted").execute()
 
-        return {"followers": query["data"]}
+        if not query.data:
+            raise HTTPException(status_code=400, detail=query.error.message)
+
+        return {"followers": query.data}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
@@ -107,15 +105,12 @@ async def get_following(current_user: dict = Depends(get_current_user)):
     """
     try:
         user_id = current_user.user.id
-        query = (
-            supabase.table("followers")
-            .select("following_id, profiles(username, profile_picture_url)")
-            .eq("follower_id", user_id)
-            .eq("status", "accepted")
-            .execute()
-        )
+        query = supabase.table("followers").select("following_id, profiles!followers_following_id_fkey(username, profile_picture_url)").eq("follower_id", user_id).eq("status", "accepted").execute()
 
-        return {"following": query["data"]}
+        if not query:
+            raise HTTPException(status_code=400, detail=query.error.message)
+
+        return {"following": query.data}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
@@ -140,7 +135,7 @@ async def unfollow_user(
             .execute()
         )
 
-        if not response.get("data"):
+        if not response.data:
             raise HTTPException(status_code=400, detail="Failed to unfollow user")
 
         return {"message": "Successfully unfollowed the user"}

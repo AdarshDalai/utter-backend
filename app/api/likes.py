@@ -1,14 +1,15 @@
-from fastapi import APIRouter, HTTPException
-from app.services.supabase import supabase
+from fastapi import APIRouter, Depends, HTTPException
+from app.services.supabase import supabase, get_current_user
+from app.utils.db import get_db
 
 router = APIRouter()
 
 @router.post("/like_post")
-async def like_post(post_id: str, user_id: str):
+async def like_post(post_id: str, current_user: dict = Depends(get_current_user)):
     try:
         response = supabase.table("likes").insert({
             "post_id": post_id,
-            "user_id": user_id,
+            "user_id": current_user.user.id
         }).execute()
         return {"message": "Post liked successfully", "response": response}
     except Exception as e:

@@ -54,13 +54,17 @@ async def upload_posts_to_r2(file: UploadFile, file_name):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}")
     
-def upload_profile_picture_to_r2(file_content, file_name):
+async def upload_profile_picture_to_r2(file: UploadFile, file_name):
+    
+    file_content = await file.read()  # Read the file's content
+
     try:
-        S3Connect.put_object(
+        s3_upload(
+            S3Client=S3Connect,
             Bucket=Bucket,
-            Key=f"profile pictures/{file_name}",
-            Body=file_content,
-            ACL='public-read'  # Set file to be publicly accessible
+            TargetFilePath=f"profile pictures/{file_name}",
+            UploadObject=file_content,
+            UploadMethod="Object"  # Set file to be publicly accessible
         )
         return f"https://{Bucket}.{ConnectionUrl}/profile pictures/{file_name}"
     except Exception as e:

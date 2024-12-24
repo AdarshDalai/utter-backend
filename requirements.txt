@@ -1,7 +1,10 @@
 fastapi
-uvicorn
-pydantic
-supabase
+fastapi-sqlalchemy 
+pydantic 
+alembic 
+psycopg2 
+uvicorn 
 python-dotenv
+supabase
 boto3
 dataplane

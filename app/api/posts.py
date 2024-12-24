@@ -4,10 +4,11 @@ from app.models.post import Post
 from app.models.user import User
 from app.services.cloudflare import upload_posts_to_r2
 from app.services.supabase import get_current_user
+from app.utils.db import get_db
 
 router = APIRouter()
 
-@router.post("/posts", response_model=Post)
+@router.post("/post", response_model=Post)
 async def create_post(
     content: str, 
     media: UploadFile = File(...), 
@@ -38,11 +39,3 @@ async def create_post(
         return response.data[0]  # Return the first post record
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
-@router.get("/feed/{user_id}")
-async def get_feed(user_id: str):
-    try:
-        response = supabase.table("posts").select("*").eq("user_id", user_id).execute()
-        return {"message": "Feed retrieved", "posts": response.data}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))

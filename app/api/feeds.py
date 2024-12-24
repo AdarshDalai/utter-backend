@@ -1,48 +1,50 @@
-from fastapi import APIRouter, Depends, HTTPException
-from app.services.supabase import supabase
-from app.services.supabase import get_current_user
+from fastapi import APIRouter, HTTPException, Depends
+from typing import List
+from app.services.supabase import supabase, get_current_user
+from app.models.post import Post  # Assuming the Post model is defined similarly
 
 router = APIRouter()
 
-@router.get("/feed", tags=["Feed"])
-async def get_feed(
-    current_user: dict = Depends(get_current_user),
-    limit: int = 10,
-    offset: int = 0
-):
+@router.get("/", response_model=List[Post], tags=["Feed"])
+async def get_feed(current_user: dict = Depends(get_current_user)):
     """
-    Fetch the feed for the authenticated user.
-    Includes posts by users the current user follows.
+    Fetch the user's feed based on the users they are following.
+    - Includes posts from followed users.
+    - Orders posts by creation date (most recent first).
     """
     try:
-        user_id = current_user["user"]["id"]
+        user_id = current_user.user.id  # Get the current authenticated user
 
-        # Fetch posts from followed users
-        query = (
-            supabase.table("posts")
-            .select("""
-                id,
-                content,
-                media_url,
-                created_at,
-                user_id,
-                profiles(username, profile_picture_url),
-                likes(count) as like_count,
-                comments(count) as comment_count
-            """)
-            .join("followers", "followers.following_id = posts.user_id")
-            .eq("followers.follower_id", user_id)
-            .order("created_at", desc=True)
-            .limit(limit)
-            .offset(offset)
+        # Step 1: Get the list of users the current user is following
+        followers_query = (
+            supabase.table("followers")
+            .select("following_id")
+            .eq("follower_id", user_id)  # Get the users that the current user is following
+            .eq("status", "accepted")  # Ensure the follow status is accepted
             .execute()
         )
+        
+        # If the user is not following anyone, return an empty feed
+        if not followers_query.data:
+            return {"posts": []}
 
-        # Check if data exists
-        if query.get("data") is None or len(query["data"]) == 0:
-            return {"message": "No posts available in the feed", "posts": []}
+        following_ids = [follower["following_id"] for follower in followers_query.data]
 
-        return {"message": "Feed retrieved successfully", "posts": query["data"]}
-    
+        # Step 2: Fetch posts from followed users
+        posts_query = (
+            supabase.table("posts")
+            .select("id, content, media_url, user_id, created_at")
+            .in_("user_id", following_ids)  # Get posts from users in the following list
+            .order("created_at", desc=True)  # Sort by creation date, descending (most recent first)
+            .execute()
+        )
+        
+        # If no posts found, return an empty list
+        if not posts_query.data:
+            return {"posts": []}
+
+        # Step 3: Return the posts in the feed
+        return {"posts": posts_query.data}
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching feed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
