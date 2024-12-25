@@ -23,7 +23,7 @@ def create_user(user: User, password: str):
         }
     })
 
-def login_user(email: str, password: str):
+async def login_user(email: str, password: str):
     return supabase.auth.sign_in_with_password({
         "email": email,
         "password": password,

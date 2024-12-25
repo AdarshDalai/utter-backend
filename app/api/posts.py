@@ -1,10 +1,10 @@
 import time
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from app.services.auth import get_current_user
 from app.services.supabase import supabase
 from app.models.post import Post
 from app.models.user import User
 from app.services.cloudflare import upload_posts_to_r2
-from app.services.supabase import get_current_user
 
 router = APIRouter()
 

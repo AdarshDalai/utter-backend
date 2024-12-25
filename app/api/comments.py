@@ -2,7 +2,8 @@ from pydantic import BaseModel
 from app.models.comment import Comment
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
-from app.services.supabase import get_current_user, supabase
+from app.services.auth import get_current_user
+from app.services.supabase import supabase
 
 router = APIRouter()
 

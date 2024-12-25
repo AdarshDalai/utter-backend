@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
-from app.services.supabase import get_current_user, supabase
+from app.services.auth import get_current_user
+from app.services.supabase import supabase
 from app.models.notification import Notification
 from app.utils.db import get_db
 
 router = APIRouter()
 
 @router.post("/create_notification")
-async def create_notification(notification: Notification):
+async def create_notification(notification: Notification, current_user: dict = Depends(get_current_user)):
     try:
         response = supabase.table("notifications").insert({
             "message": notification.message,
@@ -18,7 +19,7 @@ async def create_notification(notification: Notification):
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/notifications/{user_id}")
-async def get_notifications(user_id: str):
+async def get_notifications(user_id: str, current_user: dict = Depends(get_current_user)):
     try:
         response = supabase.table("notifications").select("*").eq("user_id", user_id).execute()
         return {"message": "Notifications retrieved", "notifications": response.data}

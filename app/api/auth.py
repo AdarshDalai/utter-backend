@@ -26,8 +26,11 @@ async def sign_up(request: SignUpRequest, response: Response):
             profile_picture_url=request.profile_picture_url),
             password=request.password
         )
-        token = auth_response.session.access_token
-        response.set_cookie(key="access_token", value = f"Bearer {token}", httponly=True)
+        access_token = auth_response.session.access_token
+        refresh_token = auth_response.session.refresh_token
+        response.set_cookie(key="access_token", value = f"Bearer {access_token}", httponly=True)
+        response.set_cookie(key="refresh_token", value=refresh_token, httponly=True)
+
         return {"message": "User created successfully", "auth_response": auth_response}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -40,6 +43,10 @@ class LoginRequest(BaseModel):
 async def login(request: LoginRequest, response: Response):
     try:
         auth_response = login_user(email=request.email, password=request.password)
+        access_token = token = auth_response.session.access_token
+        refresh_token = auth_response.session.refresh_token
+        response.set_cookie(key="access_token", value = f"Bearer {access_token}", httponly=True)
+        response.set_cookie(key="refresh_token", value=refresh_token, httponly=True)
         return {"message": "User logged in", "session": auth_response}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -49,6 +56,7 @@ async def logout(response: Response, current_user: dict = Depends(get_current_us
     try:
         auth_response = logout_user()
         response.delete_cookie("access_token")
+        response.delete_cookie("refresh_token")
         return {"message": "User logged out successfully"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

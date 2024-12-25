@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List
-from app.services.supabase import supabase, get_current_user
+from app.services.auth import get_current_user
+from app.services.supabase import supabase
 from app.models.post import Post  # Assuming the Post model is defined similarly
 
 router = APIRouter()
