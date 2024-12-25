@@ -10,7 +10,7 @@ supabase: Client = create_client(url, key)
 def create_user(user: User, password: str):
         
     # Sign up the user in auth.users and capture their ID
-    response = supabase.auth.sign_up({
+    return supabase.auth.sign_up({
         "email": user.email,
         "password": password,
         "options": {
@@ -22,10 +22,6 @@ def create_user(user: User, password: str):
             }
         }
     })
-
-    return {
-        "auth_response": response
-    }
 
 def login_user(email: str, password: str):
     return supabase.auth.sign_in_with_password({
@@ -65,8 +61,8 @@ def update_user_bio(bio: str):
         }
     })
 
-def get_current_user():
-    return supabase.auth.get_user()
+def get_current_user(token:str):
+    return supabase.auth.get_user(token)
 
 def update_user_name(fullname: str):
     return supabase.auth.update_user(

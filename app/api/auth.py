@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException, Body, Depends
+from fastapi import APIRouter, HTTPException, Body, Depends, Response
 from pydantic import BaseModel
-from app.services.supabase import create_user, login_user, logout_user, reset_password, get_current_user
+from app.services.auth import get_current_user
+from app.services.supabase import create_user, login_user, logout_user, reset_password
 from app.models.user import User
 
 
@@ -15,9 +16,9 @@ class SignUpRequest(BaseModel):
     profile_picture_url: str
 
 @router.post("/signup")
-async def sign_up(request: SignUpRequest):
+async def sign_up(request: SignUpRequest, response: Response):
     try:
-        response = create_user( User(
+        auth_response = create_user( User(
             email=request.email,
             fullname=request.fullname,
             username=request.username,
@@ -25,7 +26,9 @@ async def sign_up(request: SignUpRequest):
             profile_picture_url=request.profile_picture_url),
             password=request.password
         )
-        return {"message": "User created successfully", "response": response}
+        token = auth_response.session.access_token
+        response.set_cookie(key="access_token", value = f"Bearer {token}", httponly=True)
+        return {"message": "User created successfully", "auth_response": auth_response}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -34,25 +37,26 @@ class LoginRequest(BaseModel):
     password: str
 
 @router.post("/login")
-async def login(request: LoginRequest):
+async def login(request: LoginRequest, response: Response):
     try:
-        response = login_user(email=request.email, password=request.password)
-        return {"message": "User logged in", "session": response}
+        auth_response = login_user(email=request.email, password=request.password)
+        return {"message": "User logged in", "session": auth_response}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/logout")
-async def logout():
+async def logout(response: Response, current_user: dict = Depends(get_current_user)):
     try:
-        response = logout_user()
+        auth_response = logout_user()
+        response.delete_cookie("access_token")
         return {"message": "User logged out successfully"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/reset_password")
-async def reset_password(email: str, redirect_to: str):
+async def reset_password(email: str, redirect_to: str, current_user: dict = Depends(get_current_user)):
     try:
-        response = reset_password(email, redirect_to)
+        auth_response = reset_password(email, redirect_to)
         return {"message": "Password reset email sent"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -62,5 +66,5 @@ def get_current_user_details(current_user: dict = Depends(get_current_user)):
     """
     Endpoint to retrieve the currently authenticated user.
     """
-
-    return {"user": current_user}
+    user = current_user
+    return {"user": user}

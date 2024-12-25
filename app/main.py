@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware import Middleware
 from app.api.auth import router as auth_router
 from app.api.posts import router as posts_router
 from app.api.users import router as users_router
@@ -7,9 +8,11 @@ from app.api.likes import router as likes_router
 from app.api.notifications import router as notifications_router
 from app.api.feeds import router as feeds_router
 from app.api.follows import router as follows_router
+from app.services.auth import AuthMiddleware
 
 app = FastAPI()
 
+app.add_middleware(AuthMiddleware)
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(posts_router, prefix="/posts", tags=["posts"])
 app.include_router(users_router, prefix="/users", tags=["users"])
