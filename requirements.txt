@@ -12,3 +12,4 @@ dataplane
 sqlmodel
 fuzzywuzzy
 asyncpg
+jwt
