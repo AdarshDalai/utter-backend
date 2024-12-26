@@ -7,4 +7,5 @@ class User(SQLModel):
     username: str
     bio: str
     profile_picture_url: str = None
+    created_at: str
     is_private: bool = False
