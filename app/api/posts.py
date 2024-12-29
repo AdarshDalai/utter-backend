@@ -30,7 +30,7 @@ async def create_post(
             raise HTTPException(status_code=400, detail="Unsupported file format.")
         
         # Generate a unique file name using user ID and timestamp
-        unique_file_name = f"{current_user["sub"]}_{int(time.time())}.{file_extension}"
+        unique_file_name = f"{current_user['sub']}_{int(time.time())}.{file_extension}"
         media_url = await upload_posts_to_r2(media, unique_file_name)
         
         # Step 3: Insert post data into Supabase
