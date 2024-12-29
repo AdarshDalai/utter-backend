@@ -29,7 +29,7 @@ async def create_comment(
         comment_data = {
             "comment": comment,
             "post_id": post_id,
-            "user_id": current_user.user.id,  # Authenticated user ID
+            "user_id": current_user["sub"],  # Authenticated user ID
             "parent_id": parent_id  # Optional parent ID for replies
         }
 

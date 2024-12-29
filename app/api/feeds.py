@@ -14,7 +14,7 @@ async def get_feed(current_user: dict = Depends(get_current_user)):
     - Orders posts by creation date (most recent first).
     """
     try:
-        user_id = current_user.user.id  # Get the current authenticated user
+        user_id = current_user["sub"]  # Get the current authenticated user
 
         # Step 1: Get the list of users the current user is following
         followers_query = (

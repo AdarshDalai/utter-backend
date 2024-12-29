@@ -16,7 +16,7 @@ async def send_follow_request(
     If the user's account is private, the request is marked as 'pending'.
     """
     try:
-        follower_id = current_user.user.id
+        follower_id = current_user["sub"]
 
         # Check if the target user exists
         target_user_query = supabase.table("profiles").select("id, is_private").eq("id", target_user_id).execute()
@@ -67,7 +67,7 @@ async def manage_follow_request(
             raise HTTPException(status_code=404, detail="Follow request not found")
 
         # Ensure the current user is the target of the request
-        if follow_request["following_id"] != current_user.user.id:
+        if follow_request["following_id"] != current_user["sub"]:
             raise HTTPException(status_code=403, detail="You are not authorized to manage this follow request")
 
         # Update the status based on the action
@@ -88,7 +88,7 @@ async def get_followers(current_user: dict = Depends(get_current_user)):
     Retrieve the list of followers for the current user.
     """
     try:
-        user_id = current_user.user.id
+        user_id = current_user["sub"]
         query = supabase.table("followers").select("follower_id, profiles!followers_follower_id_fkey(username, profile_picture_url)").eq("following_id", user_id).eq("status", "accepted").execute()
 
         if not query.data:
@@ -105,7 +105,7 @@ async def get_following(current_user: dict = Depends(get_current_user)):
     Retrieve the list of users the current user is following.
     """
     try:
-        user_id = current_user.user.id
+        user_id = current_user["sub"]
         query = supabase.table("followers").select("following_id, profiles!followers_following_id_fkey(username, profile_picture_url)").eq("follower_id", user_id).eq("status", "accepted").execute()
 
         if not query:
@@ -125,7 +125,7 @@ async def unfollow_user(
     Unfollow a user.
     """
     try:
-        follower_id = current_user.user.id
+        follower_id = current_user["sub"]
 
         # Delete the follow relationship
         response = (

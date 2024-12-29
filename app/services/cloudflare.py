@@ -62,7 +62,7 @@ async def upload_to_r2(file: UploadFile, folder: str, file_name: str):
         )
 
         # Return the public URL
-        return f"https://{Bucket}.{ConnectionUrl}/{file_key}"
+        return f"https://pub-6920a900fc98444dbeda48c0377125d5.r2.dev/{file_key}"
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}")
@@ -78,4 +78,4 @@ async def upload_profile_picture_to_r2(file: UploadFile, file_name: str):
     """
     Upload a profile picture to R2.
     """
-    return await upload_to_r2(file, "profile pictures", file_name)
+    return await upload_to_r2(file, "profile_pictures", file_name)
