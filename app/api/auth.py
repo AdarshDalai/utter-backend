@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Body, Depends, Response
 from pydantic import BaseModel
+from app.services import supabase
 from app.services.auth import get_current_user
 from app.services.supabase import create_user, login_user, logout_user, reset_password
 from app.models.user import User
@@ -76,3 +77,35 @@ def get_current_user_details(current_user: dict = Depends(get_current_user)):
     """
     user = current_user
     return {"user": user}
+
+class TokenRefreshRequest(BaseModel):
+    refresh_token: str
+
+@router.post("/refresh_token")
+async def refresh_token(request: TokenRefreshRequest, response: Response):
+    """
+    Endpoint to refresh the access token using a valid refresh token.
+    """
+    try:
+        # Use Supabase's refresh_session method to refresh the tokens
+        refresh_response = supabase.refresh_token(request.refresh_token)
+
+        # Check if the refresh was successful
+        if not refresh_response or "error" in refresh_response:
+            raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+        # Extract the new tokens
+        new_access_token = refresh_response.session.access_token
+        new_refresh_token = refresh_response.session.refresh_token
+
+        # Set the new tokens in cookies
+        response.set_cookie(key="access_token", value=f"Bearer {new_access_token}", httponly=True)
+        response.set_cookie(key="refresh_token", value=new_refresh_token, httponly=True)
+
+        return {
+            "access_token": new_access_token,
+            "refresh_token": new_refresh_token,
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Token refresh failed: {str(e)}")

@@ -72,3 +72,6 @@ def update_user_name(fullname: str):
             }
         }
     )
+
+def refresh_token(token: str) :
+    return supabase.auth.refresh_session(token)
