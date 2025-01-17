@@ -75,3 +75,6 @@ def update_user_name(fullname: str):
 
 def refresh_token(token: str) :
     return supabase.auth.refresh_session(token)
+    
+def search_name_or_username(text: str):
+    response = supabase.table("profiles").select("id, username, name, profile_picture_url").or_(f"name.eq.%{text}%,username.eq.%{text}%").execute()

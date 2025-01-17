@@ -16,6 +16,20 @@ async def like_post(post_id: str, current_user: dict = Depends(get_current_user)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@router.delete("/unlike_post")
+async def unlike_post(post_id: str, current_user: dict = Depends(get_current_user)):
+    try:
+        # Delete the like entry from the "likes" table
+        response = supabase.table("likes").delete().eq("post_id", post_id).eq("user_id", current_user["sub"]).execute()
+        
+        if response.status_code == 200:
+            return {"message": "Post unliked successfully"}
+        else:
+            raise HTTPException(status_code=404, detail="Like not found or already removed")
+    
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @router.get("/likes/{post_id}")
 async def get_likes(post_id: str, current_user: dict = Depends(get_current_user)):
     try:
