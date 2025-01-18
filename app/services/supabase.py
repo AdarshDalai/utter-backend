@@ -1,4 +1,5 @@
 import os
+from fastapi import UploadFile
 from supabase import create_client, Client
 from app.models.user import User
 
@@ -78,3 +79,38 @@ def refresh_token(token: str) :
     
 def search_name_or_username(text: str):
     response = supabase.table("profiles").select("id, username, name, profile_picture_url").or_(f"name.eq.%{text}%,username.eq.%{text}%").execute()
+
+def upload_post(file_path: str, file_name: str):
+    with open(file_path, 'rb') as f:
+        response = supabase.storage.from_("posts").upload(
+            file=f,
+            path=file_name,
+            file_options={"cache-control": "3600", "upsert": "false"},
+        )
+    return response
+
+def delete_post(file_name: str):
+    response = supabase.storage.from_("posts").remove([file_name])
+    return response
+
+def upload_avatar(file_path: str, file_name: str):
+    with open(file_path, 'rb') as f:
+        response = supabase.storage.from_("profile_pictures").upload(
+            file=f,
+            path=file_name,
+            file_options={"cache-control": "3600", "upsert": "false"},
+        )
+    return response
+
+def replace_avatar(file_path: str, file_name: str):
+    with open(file_path, 'rb') as f:
+        response = supabase.storage.from_("profile_pictures").update(
+            file=f,
+            path=file_name,
+            file_options={"cache-control": "3600", "upsert": "true"},
+        )
+    return response
+
+def delete_avatar(file_name: str):
+    response = supabase.storage.from_("profile_pictures").remove([file_name])
+    return response

@@ -1,10 +1,10 @@
 import time
+import os
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from app.services.auth import get_current_user
-from app.services.supabase import supabase
+from app.services.supabase import supabase, upload_post,url
 from app.models.post import Post
 from app.models.user import User
-from app.services.cloudflare import upload_posts_to_r2
 
 router = APIRouter()
 
@@ -24,16 +24,27 @@ async def create_post(
         if not media:
             raise HTTPException(status_code=400, detail="Media file is required.")
         
-        # Step 2: Upload media to Cloudflare R2
+        # Step 2: Validate file extension
         file_extension = media.filename.split('.')[-1]  # Get file extension
         if file_extension.lower() not in ["jpg", "jpeg", "png", "mp4", "mov"]:
             raise HTTPException(status_code=400, detail="Unsupported file format.")
         
         # Generate a unique file name using user ID and timestamp
         unique_file_name = f"{current_user['sub']}_{int(time.time())}.{file_extension}"
-        media_url = await upload_posts_to_r2(media, unique_file_name)
         
-        # Step 3: Insert post data into Supabase
+        # Step 3: Upload media to Supabase storage
+        file_path = f"/tmp/{unique_file_name}"
+        with open(file_path, "wb") as buffer:
+            buffer.write(await media.read())
+        
+        upload_response = upload_post(file_path, unique_file_name)
+        
+        if not upload_response:
+            raise HTTPException(status_code=400, detail="Failed to upload media.")
+        
+        media_url = f"{url}/storage/v1/object/public/posts/{unique_file_name}"
+        
+        # Step 4: Insert post data into Supabase
         post_data = {
             "content": content,
             "media_url": media_url,
@@ -44,7 +55,7 @@ async def create_post(
         if not response.data:
             raise HTTPException(status_code=400, detail="Failed to create post.")
 
-        # Step 4: Return the created post
+        # Step 5: Return the created post
         return response.data[0]
     
     except Exception as e:

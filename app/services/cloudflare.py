@@ -1,6 +1,6 @@
-from dataplane import s3_upload
 import os
 import boto3
+from botocore.exceptions import ClientError
 from botocore.client import Config
 from dotenv import load_dotenv
 from fastapi import HTTPException, UploadFile
@@ -71,11 +71,22 @@ async def upload_posts_to_r2(file: UploadFile, file_name: str):
     """
     Upload a post media file to R2.
     """
-    return await upload_to_r2(file, "posts", file_name)
+    return await upload_file(file, "posts", file_name)
 
 
 async def upload_profile_picture_to_r2(file: UploadFile, file_name: str):
     """
     Upload a profile picture to R2.
     """
-    return await upload_to_r2(file, "profile_pictures", file_name)
+    return await upload_file(file, "profile_pictures", file_name)
+
+def upload_file(file_name, bucket_name, object_name:str):
+    if object_name is None:
+        object_name = file_name
+ 
+    try:
+        S3Connect.upload_file(file_name, bucket_name, object_name)
+    except ClientError as e:
+        print(f"An error occurred: {e}")
+        return False
+    return True

@@ -1,6 +1,8 @@
+import os
+import time
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from app.services.auth import get_current_user
-from app.services.supabase import supabase, update_user_bio, update_user_profile_picture, update_user_username
+from app.services.supabase import supabase, update_user_bio, update_user_profile_picture, update_user_username, upload_avatar
 from app.models.user import User
 from app.services.cloudflare import upload_profile_picture_to_r2
 
@@ -74,15 +76,42 @@ async def update_username(username: str, current_user: dict = Depends(get_curren
 @router.put("/update_profile_picture")
 async def update_profile_picture(profile_picture: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
     try:
-        current_user_response = supabase.table("profiles").select("username").eq("id", current_user["sub"]).execute()
-        current_username = current_user_response.data[0]['username']
-        profile_picture_url = await upload_profile_picture_to_r2(profile_picture, current_username)
+        # Generate a unique file name using user ID and timestamp
+        file_extension = profile_picture.filename.split('.')[-1]
+        unique_file_name = f"{current_user['sub']}_{int(time.time())}.{file_extension}"
+        
+        # Save the UploadFile to a temporary file
+        temp_file_path = f"/tmp/{unique_file_name}"
+        with open(temp_file_path, "wb") as buffer:
+            buffer.write(await profile_picture.read())
+        
+        # Upload the profile picture to Supabase storage
+        upload_response = upload_avatar(temp_file_path, unique_file_name)
+        
+        if not upload_response:
+            raise HTTPException(status_code=400, detail="Failed to upload profile picture.")
+        
+        # Get the public URL of the uploaded profile picture
+        profile_picture_url_response = supabase.storage.from_("profile_pictures").get_public_url(upload_response['full_path'])
+        profile_picture_url = profile_picture_url_response.get('publicURL')
+        
+        if not profile_picture_url:
+            raise HTTPException(status_code=400, detail="Failed to get profile picture URL.")
+        
+        # Update the user's profile picture URL in the database
         response = update_user_profile_picture(profile_picture_url)
         if not response.user:
             raise HTTPException(status_code=404, detail="User not found")
+        
         return {"message": "Profile picture updated", "user": response.user}
+    
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+    
+    finally:
+        # Clean up the temporary file
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
 
 
 @router.put("/update_bio")
